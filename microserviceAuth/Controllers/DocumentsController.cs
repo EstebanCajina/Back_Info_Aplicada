@@ -9,7 +9,7 @@ using microserviceAuth.Models.microserviceAuth.Models;
 public class DocumentsController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
-    private static MemPool _memPool = new MemPool();
+
 
     public DocumentsController(ApplicationDbContext context)
     {
@@ -28,19 +28,46 @@ public class DocumentsController : ControllerBase
             Base64Content = documentDto.Base64Content
         };
 
-        // Agregar el documento a la MemPool
-        _memPool.AddDocument(document);
-
         // Guardar en la base de datos
         _context.Documents.Add(document);
         await _context.SaveChangesAsync();
 
-        return Ok("Document uploaded and saved to MemPool and database.");
+        return Ok("Document uploaded and saved to the database.");
     }
 
-    [HttpGet("mempool")]
-    public IActionResult GetMemPool()
+    [HttpGet("documents")]
+    public async Task<IActionResult> GetDocuments()
     {
-        return Ok(_memPool.Documents); // Retornar los documentos en la MemPool
+        // Proyección directa solo para los campos necesarios
+        var documents = await _context.Documents
+            .Select(d => new
+            {
+                d.Id,
+                d.Owner,
+                d.FileType,
+                d.CreatedAt,
+                d.Size
+            })
+            .ToListAsync();
+
+        return Ok(documents); // Retornar los documentos sin Base64Content
     }
+
+    [HttpDelete("delete/{id}")]
+    public async Task<IActionResult> DeleteDocument(int id)
+    {
+        var document = await _context.Documents.FindAsync(id);
+        if (document == null)
+        {
+            return NotFound("Document not found.");
+        }
+
+        _context.Documents.Remove(document);
+        await _context.SaveChangesAsync();
+
+        return Ok("Document deleted successfully.");
+    }
+ 
+
+
 }

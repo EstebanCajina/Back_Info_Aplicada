@@ -11,6 +11,11 @@
         }
         // Agregar la tabla Documents
         public DbSet<Document> Documents { get; set; }
+        public DbSet<SystemConfig> SystemConfigs { get; set; }
+   
+
+        public DbSet<Block> Blocks { get; set; }
+
 
     }
 

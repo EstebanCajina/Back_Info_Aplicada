@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using microserviceAuth.Models;
 
@@ -11,9 +12,11 @@ using microserviceAuth.Models;
 namespace microserviceAuth.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20241022203832_System_Mempool_Block")]
+    partial class System_Mempool_Block
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -295,7 +298,7 @@ namespace microserviceAuth.Migrations
                     b.ToTable("Documents");
                 });
 
-            modelBuilder.Entity("microserviceAuth.Models.microserviceAuth.Models.MemPool", b =>
+            modelBuilder.Entity("microserviceAuth.Models.microserviceAuth.Models.MemPoolDbo", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -319,7 +322,7 @@ namespace microserviceAuth.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("MemPools");
+                    b.ToTable("MemPool");
                 });
 
             modelBuilder.Entity("microserviceAuth.Models.microserviceAuth.Models.SystemConfig", b =>
