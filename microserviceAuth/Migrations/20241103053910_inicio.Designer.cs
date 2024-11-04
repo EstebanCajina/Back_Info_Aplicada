@@ -12,8 +12,8 @@ using microserviceAuth.Models;
 namespace microserviceAuth.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20241021053044_updateUser")]
-    partial class updateUser
+    [Migration("20241103053910_inicio")]
+    partial class inicio
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -213,6 +213,9 @@ namespace microserviceAuth.Migrations
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("longtext");
 
+                    b.Property<string>("SessionToken")
+                        .HasColumnType("longtext");
+
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("tinyint(1)");
 
@@ -232,6 +235,36 @@ namespace microserviceAuth.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("microserviceAuth.Models.microserviceAuth.Models.Block", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<long>("Milliseconds")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("MinedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("PreviousHash")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<int>("Proof")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Blocks");
+                });
+
             modelBuilder.Entity("microserviceAuth.Models.microserviceAuth.Models.Document", b =>
                 {
                     b.Property<int>("Id")
@@ -243,6 +276,9 @@ namespace microserviceAuth.Migrations
                     b.Property<string>("Base64Content")
                         .IsRequired()
                         .HasColumnType("longtext");
+
+                    b.Property<int?>("BlockId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
@@ -260,7 +296,31 @@ namespace microserviceAuth.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("BlockId");
+
                     b.ToTable("Documents");
+                });
+
+            modelBuilder.Entity("microserviceAuth.Models.microserviceAuth.Models.SystemConfig", b =>
+                {
+                    b.Property<int>("id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("id"));
+
+                    b.Property<int>("MaxDocs")
+                        .HasColumnType("int");
+
+                    b.Property<double>("ProcessTime")
+                        .HasColumnType("double");
+
+                    b.Property<int>("QuantityOfZeros")
+                        .HasColumnType("int");
+
+                    b.HasKey("id");
+
+                    b.ToTable("SystemConfigs");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -312,6 +372,18 @@ namespace microserviceAuth.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("microserviceAuth.Models.microserviceAuth.Models.Document", b =>
+                {
+                    b.HasOne("microserviceAuth.Models.microserviceAuth.Models.Block", null)
+                        .WithMany("Documents")
+                        .HasForeignKey("BlockId");
+                });
+
+            modelBuilder.Entity("microserviceAuth.Models.microserviceAuth.Models.Block", b =>
+                {
+                    b.Navigation("Documents");
                 });
 #pragma warning restore 612, 618
         }

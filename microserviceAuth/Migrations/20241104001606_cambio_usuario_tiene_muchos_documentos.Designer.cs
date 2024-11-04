@@ -12,8 +12,8 @@ using microserviceAuth.Models;
 namespace microserviceAuth.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20241022203832_System_Mempool_Block")]
-    partial class System_Mempool_Block
+    [Migration("20241104001606_cambio_usuario_tiene_muchos_documentos")]
+    partial class cambio_usuario_tiene_muchos_documentos
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -213,6 +213,9 @@ namespace microserviceAuth.Migrations
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("longtext");
 
+                    b.Property<string>("SessionToken")
+                        .HasColumnType("longtext");
+
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("tinyint(1)");
 
@@ -284,9 +287,9 @@ namespace microserviceAuth.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<string>("Owner")
+                    b.Property<string>("OwnerId")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("varchar(255)");
 
                     b.Property<long>("Size")
                         .HasColumnType("bigint");
@@ -295,34 +298,9 @@ namespace microserviceAuth.Migrations
 
                     b.HasIndex("BlockId");
 
+                    b.HasIndex("OwnerId");
+
                     b.ToTable("Documents");
-                });
-
-            modelBuilder.Entity("microserviceAuth.Models.microserviceAuth.Models.MemPoolDbo", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("FileType")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("Owner")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<long>("Size")
-                        .HasColumnType("bigint");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("MemPool");
                 });
 
             modelBuilder.Entity("microserviceAuth.Models.microserviceAuth.Models.SystemConfig", b =>
@@ -403,6 +381,14 @@ namespace microserviceAuth.Migrations
                     b.HasOne("microserviceAuth.Models.microserviceAuth.Models.Block", null)
                         .WithMany("Documents")
                         .HasForeignKey("BlockId");
+
+                    b.HasOne("microserviceAuth.Models.User", "Owner")
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Owner");
                 });
 
             modelBuilder.Entity("microserviceAuth.Models.microserviceAuth.Models.Block", b =>
