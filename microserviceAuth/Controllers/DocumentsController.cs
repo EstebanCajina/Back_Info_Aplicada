@@ -47,9 +47,11 @@ public class DocumentsController : ControllerBase
             {
                 d.Id,
                 Owner = User.Identity.Name, // Suponiendo que el nombre del usuario está disponible
+                d.OwnerId,
                 d.FileType,
                 d.CreatedAt,
-                d.Size
+                d.Size,
+                d.BlockId
             })
             .ToListAsync();
 

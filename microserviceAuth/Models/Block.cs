@@ -9,7 +9,7 @@ namespace microserviceAuth.Models
             public int Id { get; set; }
 
             // 2. MinedAt: Date and time the block was mined in format YYYYMMDDTHHMMSS
-            public DateTime MinedAt { get; set; } // Stored as DateTime, can format it during mining
+            public DateTime? MinedAt { get; set; } // Stored as DateTime, can format it during mining
 
             // 3. Proof: A 32-bit integer defined during the mining process
             public int Proof { get; set; }
@@ -25,6 +25,9 @@ namespace microserviceAuth.Models
 
             // 7. Hash: Hash of the entire block's data, must meet complexity requirements (e.g., first 4 digits should be zeros)
             public string Hash { get; set; }
+
+
+
         }
     }
 }

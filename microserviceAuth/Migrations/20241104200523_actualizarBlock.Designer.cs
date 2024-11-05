@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using microserviceAuth.Models;
 
@@ -11,9 +12,11 @@ using microserviceAuth.Models;
 namespace microserviceAuth.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20241104200523_actualizarBlock")]
+    partial class actualizarBlock
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -375,7 +378,7 @@ namespace microserviceAuth.Migrations
 
             modelBuilder.Entity("microserviceAuth.Models.microserviceAuth.Models.Document", b =>
                 {
-                    b.HasOne("microserviceAuth.Models.microserviceAuth.Models.Block", "Block")
+                    b.HasOne("microserviceAuth.Models.microserviceAuth.Models.Block", null)
                         .WithMany("Documents")
                         .HasForeignKey("BlockId");
 
@@ -384,8 +387,6 @@ namespace microserviceAuth.Migrations
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Block");
 
                     b.Navigation("Owner");
                 });
