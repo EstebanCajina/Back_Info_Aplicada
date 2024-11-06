@@ -18,6 +18,19 @@ builder.Services.AddCors(options =>
             .AllowCredentials()); // Permitir credenciales para cookies
 });
 
+var encryptionSettings = builder.Configuration.GetSection("EncryptionSettings");
+var key = encryptionSettings["Key"];
+var iv = encryptionSettings["Iv"];
+
+// Registra la clase AesEncryption con los valores obtenidos del archivo de configuración
+builder.Services.AddSingleton<AesEncryption>(provider =>
+{
+    var configuration = provider.GetRequiredService<IConfiguration>();
+    return new AesEncryption(configuration);
+});
+
+
+
 // Configuración de la cadena de conexión MySQL
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>

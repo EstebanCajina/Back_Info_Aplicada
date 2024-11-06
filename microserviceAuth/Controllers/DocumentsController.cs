@@ -11,23 +11,29 @@ using System.IO.Compression;
 public class DocumentsController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    private readonly AesEncryption _aesEncryption;
 
 
-    public DocumentsController(ApplicationDbContext context)
+    public DocumentsController(ApplicationDbContext context, AesEncryption aesEncryption)
     {
         _context = context;
+        _aesEncryption = aesEncryption;
     }
 
     [HttpPost("upload")]
     public async Task<IActionResult> UploadDocument([FromBody] DocumentDto documentDto)
     {
+
+        string encryptedContent = _aesEncryption.Encrypt(documentDto.Base64Content);
+
+
         var document = new Document
         {
             OwnerId = documentDto.OwnerId,
             FileType = documentDto.FileType,
             CreatedAt = DateTime.Now,
             Size = documentDto.Size,
-            Base64Content = documentDto.Base64Content
+            Base64Content = encryptedContent
         };
 
         // Guardar en la base de datos
@@ -78,10 +84,13 @@ public class DocumentsController : ControllerBase
             return NotFound("Document not found.");
         }
 
+        string decryptedContent = _aesEncryption.Decrypt(document.Base64Content);
+
+
         // Retornar el contenido del documento
         return Ok(new
         {
-            base64Content = document.Base64Content,
+            base64Content = decryptedContent,
             fileType = document.FileType
         });
     }
@@ -120,7 +129,8 @@ public class DocumentsController : ControllerBase
                     var zipEntry = zipArchive.CreateEntry($"document_{document.Id}.{document.FileType.Split('/')[1]}", CompressionLevel.Optimal);
                     using (var entryStream = zipEntry.Open())
                     {
-                        var fileBytes = Convert.FromBase64String(document.Base64Content);
+                        var decryptedContent = _aesEncryption.Decrypt(document.Base64Content);
+                        var fileBytes = Convert.FromBase64String(decryptedContent);
                         await entryStream.WriteAsync(fileBytes, 0, fileBytes.Length);
                     }
                 }
