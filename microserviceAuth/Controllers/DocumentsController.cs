@@ -131,6 +131,30 @@ public class DocumentsController : ControllerBase
     }
 
 
+    [HttpGet("block/{blockId}")]
+    public async Task<IActionResult> GetDocumentsByBlockId(int blockId)
+    {
+        var documents = await _context.Documents
+            .Where(d => d.BlockId == blockId)
+            .Select(d => new
+            {
+                d.Id,
+                d.OwnerId,
+                d.FileType,
+                d.CreatedAt,
+                d.Size,
+                d.BlockId
+            })
+            .ToListAsync();
+
+        if (!documents.Any())
+        {
+            return NotFound("No se encontraron documentos para el bloque especificado.");
+        }
+
+        return Ok(documents);
+    }
+
 
 
     [HttpDelete("delete/{id}")]

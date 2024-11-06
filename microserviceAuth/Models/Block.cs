@@ -26,6 +26,7 @@ namespace microserviceAuth.Models
             // 7. Hash: Hash of the entire block's data, must meet complexity requirements (e.g., first 4 digits should be zeros)
             public string Hash { get; set; }
 
+            public bool IsMined { get; set; } = false;
 
 
         }
