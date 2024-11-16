@@ -5,9 +5,9 @@
 
     public class User : IdentityUser
     {
-        public string FirstName { get; set; } // Nombre
-        public string LastName { get; set; }  // Apellido
-        public DateTime DateOfBirth { get; set; } // Fecha de Nacimiento (dd/mm/yyyy)
+        public required string FirstName { get; set; } // Nombre
+        public required string LastName { get; set; }  // Apellido
+        public required DateTime DateOfBirth { get; set; } // Fecha de Nacimiento (dd/mm/yyyy)
 
         public string? SessionToken { get; set; } 
     }

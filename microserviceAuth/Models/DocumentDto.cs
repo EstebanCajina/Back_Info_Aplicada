@@ -4,10 +4,10 @@
     {
         public class DocumentDto
         {
-            public string OwnerId { get; set; } // ID del propietario
-            public string FileType { get; set; }
-            public long Size { get; set; }
-            public string Base64Content { get; set; } // Contenido en Base64
+            public required string OwnerId { get; set; } // ID del propietario
+            public required string FileType { get; set; }
+            public required long Size { get; set; }
+            public required string Base64Content { get; set; } // Contenido en Base64
         }
     }
 
