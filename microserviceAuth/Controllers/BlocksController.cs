@@ -158,14 +158,8 @@ namespace microserviceAuth.Controllers
 
                 try
                 {
-
-
                     // Tarea para actualizar los milisegundos
-                    // Primero declaramos la variable millisecondsTask
-                    Task millisecondsTask;
-
-                    // Asignamos la tarea a la variable
-                    millisecondsTask = Task.Run(() =>
+                    var millisecondsTask = Task.Run(() =>
                     {
                         while (!token.IsCancellationRequested)
                         {
@@ -173,8 +167,6 @@ namespace microserviceAuth.Controllers
                             System.Threading.Thread.Sleep(1); // Espera de 1 milisegundo
                         }
                     }, token);
-
-
 
                     // Iniciar el proceso de minería
                     while (true)
@@ -220,9 +212,23 @@ namespace microserviceAuth.Controllers
                                 await _context.SaveChangesAsync(); // Guardar los cambios
                             }
 
-                            // Cancelar la tarea de milisegundos y finalizar
+                            // Cancelar la tarea de milisegundos para que deje de ejecutarse
                             cancellationTokenSource.Cancel();
-                         
+
+                            // Aquí puedes realizar alguna operación adicional con `millisecondsTask`
+                            // Ejemplo: verificar si la tarea se completó sin necesidad de esperar explícitamente
+
+                            // Si quieres asegurarte de que no quede corriendo en segundo plano, puedes hacer algo como:
+                            if (millisecondsTask.IsCompleted)
+                            {
+                                // Realizar algo después de que la tarea termine
+                                Console.WriteLine("La tarea de milisegundos ha completado.");
+                            }
+                            else
+                            {
+                                // Si la tarea sigue en ejecución, hacer algo al respecto
+                                Console.WriteLine("La tarea de milisegundos aún está en ejecución.");
+                            }
 
                             return Ok(new
                             {
@@ -234,18 +240,15 @@ namespace microserviceAuth.Controllers
                             });
                         }
                     }
-                  
-
                 }
                 finally
                 {
                     // Asegurarse de detener el cronómetro y manejar tareas pendientes
                     stopwatch.Stop();
-
                 }
             }
-
         }
+
 
         // Método para calcular el hash SHA-256
         private static string ComputeSha256Hash(string rawData)
