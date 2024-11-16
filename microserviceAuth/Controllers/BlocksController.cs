@@ -214,7 +214,7 @@ namespace microserviceAuth.Controllers
 
                             // Cancelar la tarea de milisegundos y finalizar
                             cancellationTokenSource.Cancel();
-                            await millisecondsTask; // Esperar que la tarea finalice
+                         
 
                             return Ok(new
                             {
