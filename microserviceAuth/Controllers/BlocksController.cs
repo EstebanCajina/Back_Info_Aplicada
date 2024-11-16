@@ -161,7 +161,11 @@ namespace microserviceAuth.Controllers
 
 
                     // Tarea para actualizar los milisegundos
-                    var millisecondsTask = Task.Run(() =>
+                    // Primero declaramos la variable millisecondsTask
+                    Task millisecondsTask;
+
+                    // Asignamos la tarea a la variable
+                    millisecondsTask = Task.Run(() =>
                     {
                         while (!token.IsCancellationRequested)
                         {
@@ -170,7 +174,7 @@ namespace microserviceAuth.Controllers
                         }
                     }, token);
 
-                    Console.WriteLine("se inicia ",millisecondsTask);
+
 
                     // Iniciar el proceso de minería
                     while (true)
