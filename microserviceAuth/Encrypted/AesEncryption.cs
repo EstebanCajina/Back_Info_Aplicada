@@ -1,5 +1,6 @@
 namespace microserviceAuth.Encrypted
 {
+
     using System;
     using System.IO;
     using System.Security.Cryptography;
@@ -14,19 +15,8 @@ namespace microserviceAuth.Encrypted
         public AesEncryption(IConfiguration configuration)
         {
             // Leer las claves desde la configuración
-            _key = configuration["EncryptionSettings:Key"]!;
-            _iv = configuration["EncryptionSettings:Iv"]!;
-
-            // Validar que las claves no sean nulas ni vacías
-            if (string.IsNullOrEmpty(_key))
-            {
-                throw new ArgumentNullException("EncryptionSettings:Key", "La clave de cifrado no está configurada.");
-            }
-
-            if (string.IsNullOrEmpty(_iv))
-            {
-                throw new ArgumentNullException("EncryptionSettings:Iv", "El IV de cifrado no está configurado.");
-            }
+            _key = configuration["EncryptionSettings:Key"];
+            _iv = configuration["EncryptionSettings:Iv"];
         }
 
         // Método para cifrar contenido en base64
