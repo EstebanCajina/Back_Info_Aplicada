@@ -15,8 +15,8 @@ namespace microserviceAuth.Encrypted
         public AesEncryption(IConfiguration configuration)
         {
             // Leer las claves desde la configuración
-            _key = configuration["EncryptionSettings:Key"];
-            _iv = configuration["EncryptionSettings:Iv"];
+            _key = configuration["EncryptionSettings:Key"]!;
+            _iv = configuration["EncryptionSettings:Iv"]!;
         }
 
         // Método para cifrar contenido en base64

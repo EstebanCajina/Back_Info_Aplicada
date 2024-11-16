@@ -118,7 +118,7 @@
         public async Task<IActionResult> DownloadMultipleDocuments([FromBody] List<int> ids)
         {
             var documents = await _context.Documents.Where(d => ids.Contains(d.Id)).ToListAsync();
-            if (!documents.Any())
+            if (documents.Count == 0)
             {
                 return NotFound("No se encontraron documentos para descargar.");
             }
@@ -130,12 +130,16 @@
                 {
                     foreach (var document in documents)
                     {
-                        var zipEntry = zipArchive.CreateEntry($"document_{document.Id}.{document.FileType.Split('/')[1]}", CompressionLevel.Optimal);
+                        var fileTypeExtension = document.FileType.Split('/')[1];
+                        var zipEntry = zipArchive.CreateEntry($"document_{document.Id}.{fileTypeExtension}", CompressionLevel.Optimal);
+
                         using (var entryStream = zipEntry.Open())
                         {
                             var decryptedContent = _aesEncryption.Decrypt(document.Base64Content);
                             var fileBytes = Convert.FromBase64String(decryptedContent);
-                            await entryStream.WriteAsync(fileBytes, 0, fileBytes.Length);
+
+                            // Usar la sobrecarga moderna de WriteAsync
+                            await entryStream.WriteAsync(fileBytes.AsMemory(), CancellationToken.None);
                         }
                     }
                 }
@@ -143,6 +147,7 @@
                 return File(memoryStream.ToArray(), "application/zip", "documents.zip");
             }
         }
+
 
 
         [HttpGet("block/{blockId}")]
@@ -161,7 +166,7 @@
                 })
                 .ToListAsync();
 
-            if (!documents.Any())
+            if (documents.Count() == 0)
             {
                 return NotFound("No se encontraron documentos para el bloque especificado.");
             }

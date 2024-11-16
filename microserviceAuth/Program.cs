@@ -20,8 +20,6 @@ builder.Services.AddCors(options =>
 });
 
 var encryptionSettings = builder.Configuration.GetSection("EncryptionSettings");
-var key = encryptionSettings["Key"];
-var iv = encryptionSettings["Iv"];
 
 // Registra la clase AesEncryption con los valores obtenidos del archivo de configuración
 builder.Services.AddSingleton<AesEncryption>(provider =>
@@ -29,8 +27,6 @@ builder.Services.AddSingleton<AesEncryption>(provider =>
     var configuration = provider.GetRequiredService<IConfiguration>();
     return new AesEncryption(configuration);
 });
-
-
 
 // Configuración de la cadena de conexión MySQL
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -73,7 +69,7 @@ app.UseCors("AllowReactApp");
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    dbContext.Database.Migrate(); // Ejecuta migraciones si no existen las tablas
+    await dbContext.Database.MigrateAsync(); // Ejecuta migraciones si no existen las tablas de manera asíncrona
 }
 
 // Middleware
@@ -90,4 +86,4 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.Run();
+await app.RunAsync(); // Ejecutar la aplicación de manera asíncrona

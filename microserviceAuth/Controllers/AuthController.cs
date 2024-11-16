@@ -11,6 +11,7 @@
     using System.Collections.Generic;
     using System.Threading.Tasks;
     using Microsoft.Extensions.Configuration;
+    using System.Globalization;
 
     [Route("api/[controller]")]
     [ApiController]
@@ -29,7 +30,7 @@
         public async Task<IActionResult> Register([FromBody] RegisterDto dto)
         {
             // Convertir la fecha de nacimiento de string a DateTime
-            if (!DateTime.TryParseExact(dto.DateOfBirth, "dd/MM/yyyy", null, System.Globalization.DateTimeStyles.None, out var dateOfBirth))
+            if (!DateTime.TryParseExact(dto.DateOfBirth, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateOfBirth))
             {
                 return BadRequest("Invalid date format. Please use dd/MM/yyyy.");
             }

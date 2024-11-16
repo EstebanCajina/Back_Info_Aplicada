@@ -51,7 +51,7 @@ namespace microserviceAuth.Controllers
                 })
                 .ToListAsync();
 
-            if (blocks == null || !blocks.Any())
+            if (blocks.Count() == 0)
             {
                 return NotFound("No se encontraron bloques.");
             }
@@ -113,10 +113,13 @@ namespace microserviceAuth.Controllers
 
             // Calcular el hash del bloque con SHA-256
             string concatenatedData = $"{newBlock.MinedAt}-{newBlock.Proof}-{newBlock.Milliseconds}-{newBlock.PreviousHash}";
+            var stringBuilder = new StringBuilder(concatenatedData);
             foreach (var doc in documents)
             {
-                concatenatedData += $"-{doc.FileType}-{doc.CreatedAt}-{doc.Size}-{doc.Base64Content}";
+                stringBuilder.AppendFormat("-{0}-{1}-{2}-{3}", doc.FileType, doc.CreatedAt, doc.Size, doc.Base64Content);
             }
+            concatenatedData = stringBuilder.ToString();
+
 
             newBlock.Hash = ComputeSha256Hash(concatenatedData); // Genera el hash y asigna al bloque
             await _context.SaveChangesAsync();
@@ -143,12 +146,9 @@ namespace microserviceAuth.Controllers
             string previousHash = block.Hash;
 
             // Crear variables para el proceso de minería
-            DateTime minedAt = DateTime.Now;
             int proof = 0;
             int milliseconds = 0;
-
-            // Crear la variable para la cantidad de ceros
-            string requiredPrefix = new string('0', numZeros);
+            string requiredPrefix = new string('0', numZeros); // Cantidad de ceros requeridos
 
             // Usar `CancellationTokenSource` en un bloque `using`
             using (var cancellationTokenSource = new System.Threading.CancellationTokenSource())
@@ -156,86 +156,92 @@ namespace microserviceAuth.Controllers
                 var token = cancellationTokenSource.Token;
                 var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-                // Hilo para actualizar los milisegundos
-                var millisecondsTask = Task.Run(() =>
+                try
                 {
-                    while (!token.IsCancellationRequested)
+                    // Tarea para actualizar los milisegundos
+                    var millisecondsTask = Task.Run(() =>
                     {
-                        milliseconds = (int)stopwatch.ElapsedMilliseconds;
-                        System.Threading.Thread.Sleep(1); // Espera de 1 milisegundo
-                    }
-                });
-
-                // Iniciar el proceso de minería
-                while (true)
-                {
-                    minedAt = DateTime.Now; // Actualizar el tiempo de minería
-                    proof++; // Incrementar la prueba
-
-                    // Crear el string concatenado para el hash
-                    string concatenatedData = $"{minedAt}-{proof}-{milliseconds}-{block.PreviousHash}";
-                    foreach (var doc in block.Documents)
-                    {
-                        concatenatedData += $"-{doc.FileType}-{doc.CreatedAt}-{doc.Size}-{doc.Base64Content}";
-                    }
-
-                    // Generar el hash usando SHA-256
-                    string newHash = ComputeSha256Hash(concatenatedData);
-
-                    // Verificar si el hash cumple con la cantidad de ceros requeridos
-                    if (newHash.StartsWith(requiredPrefix))
-                    {
-                        // Si el hash es válido, se actualizan los datos del bloque
-                        block.Hash = newHash;
-                        block.MinedAt = minedAt;
-                        block.Proof = proof;
-                        block.Milliseconds = milliseconds;
-                        block.IsMined = true;
-
-                        // Guardamos el bloque actualizado
-                        await _context.SaveChangesAsync();
-
-                        // Buscar el bloque con el PreviousHash igual al hash del bloque actual
-                        var blockToUpdate = await _context.Blocks
-                            .FirstOrDefaultAsync(b => b.PreviousHash == previousHash);
-
-                        if (blockToUpdate != null)
+                        while (!token.IsCancellationRequested)
                         {
-                            // Actualizar el PreviousHash del bloque encontrado con el nuevo hash
-                            blockToUpdate.PreviousHash = newHash;
+                            milliseconds = (int)stopwatch.ElapsedMilliseconds;
+                            System.Threading.Thread.Sleep(1); // Espera de 1 milisegundo
+                        }
+                    }, token);
 
-                            // Guardar los cambios en el bloque encontrado
-                            await _context.SaveChangesAsync();
+                    // Iniciar el proceso de minería
+                    while (true)
+                    {
+                        DateTime minedAt = DateTime.UtcNow; // Actualizar el tiempo de minería
+                        proof++; // Incrementar la prueba
+
+                        // Crear el string concatenado para el hash usando StringBuilder
+                        var stringBuilder = new StringBuilder();
+                        stringBuilder.AppendFormat("{0}-{1}-{2}-{3}", minedAt, proof, milliseconds, block.PreviousHash);
+
+                        // Agregar información de cada documento
+                        foreach (var doc in block.Documents)
+                        {
+                            stringBuilder.AppendFormat("-{0}-{1}-{2}-{3}", doc.FileType, doc.CreatedAt, doc.Size, doc.Base64Content);
                         }
 
-                        // Cancelar la tarea de milisegundos
-                        cancellationTokenSource.Cancel();
-                        await millisecondsTask; // Esperar a que la tarea de milisegundos termine
+                        string concatenatedData = stringBuilder.ToString();
 
-                        return Ok(new
+                        // Generar el hash usando SHA-256
+                        string newHash = ComputeSha256Hash(concatenatedData);
+
+                        // Verificar si el hash cumple con la cantidad de ceros requeridos
+                        if (newHash.StartsWith(requiredPrefix))
                         {
-                            BlockId = blockId,
-                            NewHash = newHash,
-                            MinedAt = minedAt,
-                            Proof = proof,
-                            Milliseconds = milliseconds
-                        });
+                            // Actualizar los datos del bloque
+                            block.Hash = newHash;
+                            block.MinedAt = minedAt;
+                            block.Proof = proof;
+                            block.Milliseconds = milliseconds;
+                            block.IsMined = true;
+
+                            // Guardar el bloque actualizado
+                            await _context.SaveChangesAsync();
+
+                            // Buscar el bloque siguiente por el `PreviousHash`
+                            var blockToUpdate = await _context.Blocks
+                                .FirstOrDefaultAsync(b => b.PreviousHash == previousHash);
+
+                            if (blockToUpdate != null)
+                            {
+                                blockToUpdate.PreviousHash = newHash;
+                                await _context.SaveChangesAsync(); // Guardar los cambios
+                            }
+
+                            // Cancelar la tarea de milisegundos y finalizar
+                            cancellationTokenSource.Cancel();
+                            await millisecondsTask; // Esperar que la tarea finalice
+
+                            return Ok(new
+                            {
+                                BlockId = blockId,
+                                NewHash = newHash,
+                                MinedAt = minedAt,
+                                Proof = proof,
+                                Milliseconds = milliseconds
+                            });
+                        }
                     }
+                }
+                finally
+                {
+                    // Asegurarse de detener el cronómetro y manejar tareas pendientes
+                    stopwatch.Stop();
                 }
             }
         }
 
-
-
-
-
-        // Método para calcular SHA-256
-        private static string ComputeSha256Hash(string rawData)
+        // Método para calcular el hash SHA-256
+        private string ComputeSha256Hash(string rawData)
         {
-            using (var sha256Hash = SHA256.Create())
+            using (var sha256 = SHA256.Create())
             {
-                var bytes = sha256Hash.ComputeHash(Encoding.UTF8.GetBytes(rawData));
-                return BitConverter.ToString(bytes).Replace("-", "").ToLower();
+                byte[] bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(rawData));
+                return BitConverter.ToString(bytes).Replace("-", "").ToLowerInvariant();
             }
         }
 
