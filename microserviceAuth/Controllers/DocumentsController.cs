@@ -166,7 +166,7 @@
                 })
                 .ToListAsync();
 
-            if (documents.Count() == 0)
+            if (documents.Count == 0)
             {
                 return NotFound("No se encontraron documentos para el bloque especificado.");
             }

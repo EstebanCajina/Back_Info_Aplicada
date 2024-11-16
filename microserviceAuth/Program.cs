@@ -19,8 +19,6 @@ builder.Services.AddCors(options =>
             .AllowCredentials()); // Permitir credenciales para cookies
 });
 
-var encryptionSettings = builder.Configuration.GetSection("EncryptionSettings");
-
 // Registra la clase AesEncryption con los valores obtenidos del archivo de configuración
 builder.Services.AddSingleton<AesEncryption>(provider =>
 {

@@ -51,7 +51,7 @@ namespace microserviceAuth.Controllers
                 })
                 .ToListAsync();
 
-            if (blocks.Count() == 0)
+            if (blocks.Count == 0)
             {
                 return NotFound("No se encontraron bloques.");
             }
@@ -236,14 +236,13 @@ namespace microserviceAuth.Controllers
         }
 
         // Método para calcular el hash SHA-256
-        private string ComputeSha256Hash(string rawData)
+        private static string ComputeSha256Hash(string rawData)
         {
-            using (var sha256 = SHA256.Create())
-            {
-                byte[] bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(rawData));
-                return BitConverter.ToString(bytes).Replace("-", "").ToLowerInvariant();
-            }
+            // Usar el método estático SHA256.HashData
+            byte[] bytes = SHA256.HashData(Encoding.UTF8.GetBytes(rawData));
+            return BitConverter.ToString(bytes).Replace("-", "").ToLowerInvariant();
         }
+
 
     }
 }
