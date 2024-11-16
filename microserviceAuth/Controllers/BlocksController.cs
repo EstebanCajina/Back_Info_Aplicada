@@ -158,6 +158,8 @@ namespace microserviceAuth.Controllers
 
                 try
                 {
+
+
                     // Tarea para actualizar los milisegundos
                     var millisecondsTask = Task.Run(() =>
                     {
@@ -167,6 +169,8 @@ namespace microserviceAuth.Controllers
                             System.Threading.Thread.Sleep(1); // Espera de 1 milisegundo
                         }
                     }, token);
+
+                    Console.WriteLine("se inicia ",millisecondsTask);
 
                     // Iniciar el proceso de minería
                     while (true)
@@ -226,13 +230,17 @@ namespace microserviceAuth.Controllers
                             });
                         }
                     }
+                  
+
                 }
                 finally
                 {
                     // Asegurarse de detener el cronómetro y manejar tareas pendientes
                     stopwatch.Stop();
+
                 }
             }
+
         }
 
         // Método para calcular el hash SHA-256
