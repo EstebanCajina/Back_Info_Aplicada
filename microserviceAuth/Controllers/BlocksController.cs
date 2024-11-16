@@ -150,78 +150,81 @@ namespace microserviceAuth.Controllers
             // Crear la variable para la cantidad de ceros
             string requiredPrefix = new string('0', numZeros);
 
-            // Empezamos el hilo para contar los milisegundos
-            var cancellationTokenSource = new System.Threading.CancellationTokenSource();
-            var token = cancellationTokenSource.Token;
-            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-
-            // Hilo para actualizar los milisegundos
-            var millisecondsTask = Task.Run(() =>
+            // Usar `CancellationTokenSource` en un bloque `using`
+            using (var cancellationTokenSource = new System.Threading.CancellationTokenSource())
             {
-                while (!token.IsCancellationRequested)
+                var token = cancellationTokenSource.Token;
+                var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+                // Hilo para actualizar los milisegundos
+                var millisecondsTask = Task.Run(() =>
                 {
-                    milliseconds = (int)stopwatch.ElapsedMilliseconds;
-                    System.Threading.Thread.Sleep(1); // Espera de 1 milisegundo
-                }
-            });
-
-            // Iniciar el proceso de minería
-            while (true)
-            {
-                minedAt = DateTime.Now; // Actualizar el tiempo de minería
-                proof++; // Incrementar la prueba
-
-                // Crear el string concatenado para el hash
-                string concatenatedData = $"{minedAt}-{proof}-{milliseconds}-{block.PreviousHash}";
-                foreach (var doc in block.Documents)
-                {
-                    concatenatedData += $"-{doc.FileType}-{doc.CreatedAt}-{doc.Size}-{doc.Base64Content}";
-                }
-
-                // Generar el hash usando SHA-256
-                string newHash = ComputeSha256Hash(concatenatedData);
-
-                // Verificar si el hash cumple con la cantidad de ceros requeridos
-                if (newHash.StartsWith(requiredPrefix))
-                {
-                    // Si el hash es válido, se actualizan los datos del bloque
-                    block.Hash = newHash;
-                    block.MinedAt = minedAt;
-                    block.Proof = proof;
-                    block.Milliseconds = milliseconds;
-                    block.IsMined = true;
-
-                    // Guardamos el bloque actualizado
-                    await _context.SaveChangesAsync();
-
-                    // Buscar el bloque con el PreviousHash igual al hash del bloque actual
-                    var blockToUpdate = await _context.Blocks
-                        .FirstOrDefaultAsync(b => b.PreviousHash == previousHash);
-
-                    if (blockToUpdate != null)
+                    while (!token.IsCancellationRequested)
                     {
-                        // Actualizar el PreviousHash del bloque encontrado con el nuevo hash
-                        blockToUpdate.PreviousHash = newHash;
+                        milliseconds = (int)stopwatch.ElapsedMilliseconds;
+                        System.Threading.Thread.Sleep(1); // Espera de 1 milisegundo
+                    }
+                });
 
-                        // Guardar los cambios en el bloque encontrado
-                        await _context.SaveChangesAsync();
+                // Iniciar el proceso de minería
+                while (true)
+                {
+                    minedAt = DateTime.Now; // Actualizar el tiempo de minería
+                    proof++; // Incrementar la prueba
+
+                    // Crear el string concatenado para el hash
+                    string concatenatedData = $"{minedAt}-{proof}-{milliseconds}-{block.PreviousHash}";
+                    foreach (var doc in block.Documents)
+                    {
+                        concatenatedData += $"-{doc.FileType}-{doc.CreatedAt}-{doc.Size}-{doc.Base64Content}";
                     }
 
-                    // Ahora ya no se crea un nuevo bloque, sino que se actualiza el existente
-                    cancellationTokenSource.Cancel();
-                    millisecondsTask.Wait();
+                    // Generar el hash usando SHA-256
+                    string newHash = ComputeSha256Hash(concatenatedData);
 
-                    return Ok(new
+                    // Verificar si el hash cumple con la cantidad de ceros requeridos
+                    if (newHash.StartsWith(requiredPrefix))
                     {
-                        BlockId = blockId,
-                        NewHash = newHash,
-                        MinedAt = minedAt,
-                        Proof = proof,
-                        Milliseconds = milliseconds
-                    });
+                        // Si el hash es válido, se actualizan los datos del bloque
+                        block.Hash = newHash;
+                        block.MinedAt = minedAt;
+                        block.Proof = proof;
+                        block.Milliseconds = milliseconds;
+                        block.IsMined = true;
+
+                        // Guardamos el bloque actualizado
+                        await _context.SaveChangesAsync();
+
+                        // Buscar el bloque con el PreviousHash igual al hash del bloque actual
+                        var blockToUpdate = await _context.Blocks
+                            .FirstOrDefaultAsync(b => b.PreviousHash == previousHash);
+
+                        if (blockToUpdate != null)
+                        {
+                            // Actualizar el PreviousHash del bloque encontrado con el nuevo hash
+                            blockToUpdate.PreviousHash = newHash;
+
+                            // Guardar los cambios en el bloque encontrado
+                            await _context.SaveChangesAsync();
+                        }
+
+                        // Cancelar la tarea de milisegundos
+                        cancellationTokenSource.Cancel();
+                        await millisecondsTask; // Esperar a que la tarea de milisegundos termine
+
+                        return Ok(new
+                        {
+                            BlockId = blockId,
+                            NewHash = newHash,
+                            MinedAt = minedAt,
+                            Proof = proof,
+                            Milliseconds = milliseconds
+                        });
+                    }
                 }
             }
         }
+
 
 
 

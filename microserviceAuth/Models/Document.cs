@@ -12,9 +12,9 @@
             public required string Base64Content { get; set; }
 
             public int? BlockId { get; set; } // ID del bloque al que pertenece el documento
-            public Block Block { get; set; } // Relación con el bloque
+            public Block? Block { get; set; } // Relación con el bloque
 
-            public User Owner { get; set; }
+            public User? Owner { get; set; }
         }
     }
 }

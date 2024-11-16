@@ -1,6 +1,5 @@
 ﻿namespace microserviceAuth.Controllers
 {
-
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.AspNetCore.Identity;
     using Microsoft.IdentityModel.Tokens;
@@ -12,7 +11,6 @@
     using System.Collections.Generic;
     using System.Threading.Tasks;
     using Microsoft.Extensions.Configuration;
-
 
     [Route("api/[controller]")]
     [ApiController]
@@ -26,7 +24,6 @@
             _userManager = userManager;
             _configuration = configuration;
         }
-
 
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterDto dto)
@@ -71,10 +68,11 @@
             await _userManager.UpdateAsync(user);
 
             // Genera el accessToken
-            var accessToken = GenerateJwtToken(user.Id, user.UserName, user.SessionToken, "access");
+            var accessToken = GenerateJwtToken(user.Id, user.UserName!, user.SessionToken, "access");
+
 
             // Genera el refreshToken
-            var refreshToken = GenerateJwtToken(user.Id, user.UserName, user.SessionToken, "refresh");
+            var refreshToken = GenerateJwtToken(user.Id, user.UserName!, user.SessionToken, "refresh");
 
             // Almacena el refreshToken en una cookie segura
             Response.Cookies.Append("refreshToken", refreshToken, new CookieOptions
@@ -90,18 +88,23 @@
 
         private string GenerateJwtToken(string userId, string username, string sessionToken, string tokenType)
         {
-            // Obtén la clave secreta desde la configuración
+            // Obtén la clave secreta desde la configuración de forma segura
             var secretKey = _configuration["JwtSettings:SecretKey"];
+            if (string.IsNullOrEmpty(secretKey))
+            {
+                throw new InvalidOperationException("Secret key for JWT is not configured.");
+            }
+
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var claims = new List<Claim>
-    {
-        new Claim(JwtRegisteredClaimNames.Sub, userId),
-        new Claim(JwtRegisteredClaimNames.UniqueName, username),
-        new Claim("sessionToken", sessionToken),
-        new Claim("type", tokenType)
-    };
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, userId),
+                new Claim(JwtRegisteredClaimNames.UniqueName, username),
+                new Claim("sessionToken", sessionToken),
+                new Claim("type", tokenType)
+            };
 
             var token = new JwtSecurityToken(
                 claims: claims,

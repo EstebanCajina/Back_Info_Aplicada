@@ -56,7 +56,7 @@
                 .Select(d => new
                 {
                     d.Id,
-                    Owner = User.Identity.Name, // Suponiendo que el nombre del usuario está disponible
+                    Owner = User.Identity!.Name, // Suponiendo que el nombre del usuario está disponible
                     d.OwnerId,
                     d.FileType,
                     d.CreatedAt,
