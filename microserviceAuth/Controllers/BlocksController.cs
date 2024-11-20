@@ -1,34 +1,34 @@
 namespace microserviceAuth.Controllers
 {
-
     using Microsoft.AspNetCore.Mvc;
     using microserviceAuth.Models;
+    using microserviceAuth.Services; // Importar AuditService
     using Microsoft.EntityFrameworkCore;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Text;
     using System.Threading.Tasks;
     using microserviceAuth.Models.microserviceAuth.Models;
-    using System.Text;
     using System.Security.Cryptography;
-
 
     [Route("api/[controller]")]
     [ApiController]
     public class BlocksController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IAuditService _auditService; // Inyección de AuditService
 
-        public BlocksController(ApplicationDbContext context)
+        public BlocksController(ApplicationDbContext context, IAuditService auditService)
         {
             _context = context;
+            _auditService = auditService; // Inicialización de AuditService
         }
-
 
         [HttpGet("all")]
         public async Task<IActionResult> GetAllBlocks()
         {
             var blocks = await _context.Blocks
-                .Include(b => b.Documents) // Incluye los documentos de cada bloque
+                .Include(b => b.Documents)
                 .OrderBy(b => b.Id)
                 .Select(b => new
                 {
@@ -53,15 +53,12 @@ namespace microserviceAuth.Controllers
 
             if (blocks.Count == 0)
             {
+                await _auditService.LogActionAsync("Consulta de todos los bloques: no se encontraron bloques.");
                 return NotFound("No se encontraron bloques.");
             }
 
             return Ok(blocks);
         }
-
-
-
-
 
         [HttpGet("latest")]
         public async Task<IActionResult> GetLatestBlock()
@@ -73,16 +70,17 @@ namespace microserviceAuth.Controllers
 
             if (block == null)
             {
+                await _auditService.LogActionAsync("Consulta del último bloque: no se encontró.");
                 return Ok(new { id = 1, documents = new List<Document>() });
             }
 
             return Ok(block);
         }
 
-        [HttpPost("create/{maxDocs:int}")]
-        public async Task<IActionResult> CreateNewBlock(int maxDocs)
+        [HttpPost("create-and-mine/{maxDocs:int}/{numZeros:int}")]
+        public async Task<IActionResult> CreateAndMineBlock(int maxDocs, int numZeros)
         {
-            // Verificar el último bloque creado para asignar el hash previo
+            // Crear un nuevo bloque
             var lastBlock = await _context.Blocks.OrderByDescending(b => b.Id).FirstOrDefaultAsync();
             string previousHash = lastBlock != null ? lastBlock.Hash : new string('0', 64);
 
@@ -90,7 +88,7 @@ namespace microserviceAuth.Controllers
             {
                 Proof = 0,
                 PreviousHash = previousHash,
-                Hash = "0", // Placeholder que será actualizado luego
+                Hash = "0",
                 Documents = new List<Document>(),
                 IsMined = false,
                 Milliseconds = 0
@@ -99,7 +97,6 @@ namespace microserviceAuth.Controllers
             _context.Blocks.Add(newBlock);
             await _context.SaveChangesAsync();
 
-            // Obtener documentos según maxDocs y asignarlos al nuevo bloque
             var documents = await _context.Documents
                 .Where(d => d.BlockId == null)
                 .Take(maxDocs)
@@ -107,50 +104,53 @@ namespace microserviceAuth.Controllers
 
             foreach (var document in documents)
             {
-                document.BlockId = newBlock.Id; // Asigna el ID del nuevo bloque a los documentos
+                document.BlockId = newBlock.Id;
             }
             await _context.SaveChangesAsync();
 
-            // Calcular el hash del bloque con SHA-256
             string concatenatedData = $"{newBlock.MinedAt}-{newBlock.Proof}-{newBlock.Milliseconds}-{newBlock.PreviousHash}";
             var stringBuilder = new StringBuilder(concatenatedData);
+
             foreach (var doc in documents)
             {
                 stringBuilder.AppendFormat("-{0}-{1}-{2}-{3}", doc.FileType, doc.CreatedAt, doc.Size, doc.Base64Content);
             }
             concatenatedData = stringBuilder.ToString();
-
-
-            newBlock.Hash = ComputeSha256Hash(concatenatedData); // Genera el hash y asigna al bloque
+            newBlock.Hash = ComputeSha256Hash(concatenatedData);
             await _context.SaveChangesAsync();
 
-            return Ok("newBlock");
+            var mineResult = await MineBlock(newBlock.Id, numZeros);
+            if (mineResult is OkObjectResult okResult)
+            {
+                await _auditService.LogActionAsync($"Bloque creado y minado exitosamente. ID del bloque: {newBlock.Id}");
+                return Ok(new
+                {
+                    Block = newBlock,
+                    MiningResult = okResult.Value
+                });
+            }
+
+            await _auditService.LogActionAsync($"Error al crear y minar el bloque. ID del bloque: {newBlock.Id}");
+            return StatusCode(500, "Error durante el proceso de minería.");
         }
 
-
-
-        [HttpPost("mine/{blockId:int}/{numZeros:int}")]
-        public async Task<IActionResult> MineBlock(int blockId, int numZeros)
+        private async Task<IActionResult> MineBlock(int blockId, int numZeros)
         {
-            // Obtener el bloque a minar
             var block = await _context.Blocks
                 .Include(b => b.Documents)
                 .FirstOrDefaultAsync(b => b.Id == blockId);
 
             if (block == null)
             {
+                await _auditService.LogActionAsync($"Intento de minería fallido: bloque no encontrado. ID del bloque: {blockId}");
                 return NotFound("El bloque no existe.");
             }
 
-            // Guardar el hash anterior del bloque
             string previousHash = block.Hash;
-
-            // Crear variables para el proceso de minería
             int proof = 0;
             int milliseconds = 0;
-            string requiredPrefix = new string('0', numZeros); // Cantidad de ceros requeridos
+            string requiredPrefix = new string('0', numZeros);
 
-            // Usar `CancellationTokenSource` en un bloque `using`
             using (var cancellationTokenSource = new System.Threading.CancellationTokenSource())
             {
                 var token = cancellationTokenSource.Token;
@@ -158,106 +158,132 @@ namespace microserviceAuth.Controllers
 
                 try
                 {
-                    // Tarea para actualizar los milisegundos
                     var millisecondsTask = Task.Run(() =>
                     {
                         while (!token.IsCancellationRequested)
                         {
                             milliseconds = (int)stopwatch.ElapsedMilliseconds;
-                            System.Threading.Thread.Sleep(1); // Espera de 1 milisegundo
+                            System.Threading.Thread.Sleep(1);
                         }
                     }, token);
 
-                    // Iniciar el proceso de minería
                     while (true)
                     {
-                        DateTime minedAt = DateTime.UtcNow; // Actualizar el tiempo de minería
-                        proof++; // Incrementar la prueba
+                        DateTime minedAt = DateTime.UtcNow;
+                        proof++;
 
-                        // Crear el string concatenado para el hash usando StringBuilder
                         var stringBuilder = new StringBuilder();
                         stringBuilder.AppendFormat("{0}-{1}-{2}-{3}", minedAt, proof, milliseconds, block.PreviousHash);
 
-                        // Agregar información de cada documento
                         foreach (var doc in block.Documents)
                         {
                             stringBuilder.AppendFormat("-{0}-{1}-{2}-{3}", doc.FileType, doc.CreatedAt, doc.Size, doc.Base64Content);
                         }
 
                         string concatenatedData = stringBuilder.ToString();
-
-                        // Generar el hash usando SHA-256
                         string newHash = ComputeSha256Hash(concatenatedData);
 
-                        // Verificar si el hash cumple con la cantidad de ceros requeridos
                         if (newHash.StartsWith(requiredPrefix))
                         {
-                            // Actualizar los datos del bloque
                             block.Hash = newHash;
                             block.MinedAt = minedAt;
                             block.Proof = proof;
                             block.Milliseconds = milliseconds;
                             block.IsMined = true;
+                            block.LeadingZeros = numZeros;
 
-                            // Guardar el bloque actualizado
                             await _context.SaveChangesAsync();
 
-                            // Buscar el bloque siguiente por el `PreviousHash`
                             var blockToUpdate = await _context.Blocks
                                 .FirstOrDefaultAsync(b => b.PreviousHash == previousHash);
 
                             if (blockToUpdate != null)
                             {
                                 blockToUpdate.PreviousHash = newHash;
-                                await _context.SaveChangesAsync(); // Guardar los cambios
+                                await _context.SaveChangesAsync();
                             }
 
-                            // Cancelar la tarea de milisegundos para que deje de ejecutarse
                             cancellationTokenSource.Cancel();
-
-                            // Aquí puedes realizar alguna operación adicional con `millisecondsTask`
-                            // Ejemplo: verificar si la tarea se completó sin necesidad de esperar explícitamente
-
-                            // Si quieres asegurarte de que no quede corriendo en segundo plano, puedes hacer algo como:
-                            if (millisecondsTask.IsCompleted)
-                            {
-                                // Realizar algo después de que la tarea termine
-                                Console.WriteLine("La tarea de milisegundos ha completado.");
-                            }
-                            else
-                            {
-                                // Si la tarea sigue en ejecución, hacer algo al respecto
-                                Console.WriteLine("La tarea de milisegundos aún está en ejecución.");
-                            }
-
+                            await _auditService.LogActionAsync($"Bloque minado exitosamente. ID del bloque: {blockId}");
                             return Ok(new
                             {
                                 BlockId = blockId,
                                 NewHash = newHash,
                                 MinedAt = minedAt,
                                 Proof = proof,
-                                Milliseconds = milliseconds
+                                Milliseconds = milliseconds,
+                                LeadingZeros = block.LeadingZeros
                             });
                         }
                     }
                 }
                 finally
                 {
-                    // Asegurarse de detener el cronómetro y manejar tareas pendientes
                     stopwatch.Stop();
                 }
             }
         }
 
-
-        // Método para calcular el hash SHA-256
         private static string ComputeSha256Hash(string rawData)
         {
-            // Usar el método estático SHA256.HashData
             byte[] bytes = SHA256.HashData(Encoding.UTF8.GetBytes(rawData));
             return BitConverter.ToString(bytes).Replace("-", "").ToLowerInvariant();
         }
 
+        [HttpGet("validate-chain")]
+        public async Task<IActionResult> ValidateChain()
+        {
+            var blocks = await _context.Blocks
+                .Include(b => b.Documents)
+                .OrderBy(b => b.Id)
+                .ToListAsync();
 
+            var validationErrors = new List<object>();
+
+            for (int i = 1; i < blocks.Count; i++)
+            {
+                var previousBlock = blocks[i - 1];
+                var currentBlock = blocks[i];
+
+                if (currentBlock.PreviousHash != previousBlock.Hash)
+                {
+                    validationErrors.Add(new { Id = currentBlock.Id, Error = "Hash previo inconsistente" });
+                }
+
+                string concatenatedData = $"{currentBlock.MinedAt}-{currentBlock.Proof}-{currentBlock.Milliseconds}-{currentBlock.PreviousHash}";
+                var stringBuilder = new StringBuilder(concatenatedData);
+
+                foreach (var doc in currentBlock.Documents)
+                {
+                    stringBuilder.AppendFormat("-{0}-{1}-{2}-{3}", doc.FileType, doc.CreatedAt, doc.Size, doc.Base64Content);
+                }
+
+                string recalculatedHash = ComputeSha256Hash(stringBuilder.ToString());
+
+                if (!currentBlock.IsMined)
+                {
+                    if (currentBlock.Hash != recalculatedHash)
+                    {
+                        validationErrors.Add(new { Id = currentBlock.Id, Error = "El hash del bloque es inválido" });
+                    }
+                }
+                else
+                {
+                    if (!currentBlock.Hash.StartsWith(new string('0', currentBlock.LeadingZeros)) || currentBlock.Hash != recalculatedHash)
+                    {
+                        validationErrors.Add(new { Id = currentBlock.Id, Error = $"El hash del bloque minado no cumple con los {currentBlock.LeadingZeros} ceros requeridos o es inválido" });
+                    }
+                }
+            }
+
+            if (validationErrors.Count == 0)
+            {
+                await _auditService.LogActionAsync("Cadena validada exitosamente: sin errores de validación.");
+                return Ok(new { Message = "Cadena válida", IsValid = true });
+            }
+
+            await _auditService.LogActionAsync("Cadena de bloques con errores de validación encontrados.");
+            return Ok(new { IsValid = false, Errors = validationErrors });
+        }
     }
 }

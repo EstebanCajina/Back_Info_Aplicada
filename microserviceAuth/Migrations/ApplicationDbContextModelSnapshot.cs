@@ -154,6 +154,61 @@ namespace microserviceAuth.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("microserviceAuth.Models.AuditLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("longtext");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AuditLogs");
+                });
+
+            modelBuilder.Entity("microserviceAuth.Models.Block", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<bool>("IsMined")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("LeadingZeros")
+                        .HasColumnType("int");
+
+                    b.Property<long?>("Milliseconds")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("MinedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("PreviousHash")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<int?>("Proof")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Blocks");
+                });
+
             modelBuilder.Entity("microserviceAuth.Models.User", b =>
                 {
                     b.Property<string>("Id")
@@ -230,39 +285,6 @@ namespace microserviceAuth.Migrations
                         .HasDatabaseName("UserNameIndex");
 
                     b.ToTable("AspNetUsers", (string)null);
-                });
-
-            modelBuilder.Entity("microserviceAuth.Models.microserviceAuth.Models.Block", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Hash")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<bool>("IsMined")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<long>("Milliseconds")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime?>("MinedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("PreviousHash")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("Proof")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Blocks");
                 });
 
             modelBuilder.Entity("microserviceAuth.Models.microserviceAuth.Models.Document", b =>
@@ -378,7 +400,7 @@ namespace microserviceAuth.Migrations
 
             modelBuilder.Entity("microserviceAuth.Models.microserviceAuth.Models.Document", b =>
                 {
-                    b.HasOne("microserviceAuth.Models.microserviceAuth.Models.Block", "Block")
+                    b.HasOne("microserviceAuth.Models.Block", "Block")
                         .WithMany("Documents")
                         .HasForeignKey("BlockId");
 
@@ -393,7 +415,7 @@ namespace microserviceAuth.Migrations
                     b.Navigation("Owner");
                 });
 
-            modelBuilder.Entity("microserviceAuth.Models.microserviceAuth.Models.Block", b =>
+            modelBuilder.Entity("microserviceAuth.Models.Block", b =>
                 {
                     b.Navigation("Documents");
                 });

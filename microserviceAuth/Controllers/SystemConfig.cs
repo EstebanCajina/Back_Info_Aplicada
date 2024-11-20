@@ -1,8 +1,8 @@
 namespace microserviceAuth.Controllers
 {
-
     using Microsoft.AspNetCore.Mvc;
     using microserviceAuth.Models;
+    using microserviceAuth.Services; // Importar AuditService
     using Microsoft.EntityFrameworkCore;
     using System.Threading.Tasks;
     using microserviceAuth.Models.microserviceAuth.Models;
@@ -12,10 +12,12 @@ namespace microserviceAuth.Controllers
     public class SystemConfigController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IAuditService _auditService; // Inyección de AuditService
 
-        public SystemConfigController(ApplicationDbContext context)
+        public SystemConfigController(ApplicationDbContext context, IAuditService auditService)
         {
             _context = context;
+            _auditService = auditService; // Inicialización de AuditService
         }
 
         [HttpGet("get")]
@@ -24,8 +26,10 @@ namespace microserviceAuth.Controllers
             var config = await _context.SystemConfigs.FirstOrDefaultAsync();
             if (config == null)
             {
-                return NotFound("No system configuration found.");
+                await _auditService.LogActionAsync("Intento de consulta fallido: Configuración del sistema no encontrada.");
+                return NotFound("No se encontró la configuración del sistema.");
             }
+
             return Ok(config);
         }
 
@@ -35,7 +39,8 @@ namespace microserviceAuth.Controllers
             var config = await _context.SystemConfigs.FirstOrDefaultAsync();
             if (config != null)
             {
-                return BadRequest("Configuration already exists. Use the edit method to update it.");
+                await _auditService.LogActionAsync("Intento de adición fallido: La configuración ya existe.");
+                return BadRequest("La configuración ya existe. Use el método de edición para actualizarla.");
             }
 
             var newConfig = new SystemConfig
@@ -47,7 +52,9 @@ namespace microserviceAuth.Controllers
 
             _context.SystemConfigs.Add(newConfig);
             await _context.SaveChangesAsync();
-            return Ok("System configuration added successfully.");
+
+            await _auditService.LogActionAsync("Configuración del sistema añadida exitosamente.");
+            return Ok("Configuración del sistema añadida exitosamente.");
         }
 
         [HttpPost("edit")]
@@ -56,7 +63,8 @@ namespace microserviceAuth.Controllers
             var config = await _context.SystemConfigs.FirstOrDefaultAsync();
             if (config == null)
             {
-                return NotFound("No configuration found to update.");
+                await _auditService.LogActionAsync("Intento de edición fallido: Configuración no encontrada.");
+                return NotFound("No se encontró la configuración para actualizar.");
             }
 
             config.MaxDocs = configDto.MaxDocs;
@@ -65,7 +73,9 @@ namespace microserviceAuth.Controllers
 
             _context.SystemConfigs.Update(config);
             await _context.SaveChangesAsync();
-            return Ok("System configuration updated successfully.");
+
+            await _auditService.LogActionAsync("Configuración del sistema actualizada exitosamente.");
+            return Ok("Configuración del sistema actualizada exitosamente.");
         }
     }
 }

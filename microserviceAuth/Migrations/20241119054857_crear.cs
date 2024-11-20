@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace microserviceAuth.Migrations
 {
     /// <inheritdoc />
-    public partial class inicio : Migration
+    public partial class crear : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -77,18 +77,36 @@ namespace microserviceAuth.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
+                name: "AuditLogs",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    Description = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AuditLogs", x => x.Id);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
                 name: "Blocks",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    MinedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false),
-                    Proof = table.Column<int>(type: "int", nullable: false),
-                    Milliseconds = table.Column<long>(type: "bigint", nullable: false),
+                    MinedAt = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    Proof = table.Column<int>(type: "int", nullable: true),
+                    Milliseconds = table.Column<long>(type: "bigint", nullable: true),
                     PreviousHash = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     Hash = table.Column<string>(type: "longtext", nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4")
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    IsMined = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    LeadingZeros = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -245,7 +263,7 @@ namespace microserviceAuth.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    Owner = table.Column<string>(type: "longtext", nullable: false)
+                    OwnerId = table.Column<string>(type: "varchar(255)", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     FileType = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
@@ -258,6 +276,12 @@ namespace microserviceAuth.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Documents", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Documents_AspNetUsers_OwnerId",
+                        column: x => x.OwnerId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_Documents_Blocks_BlockId",
                         column: x => x.BlockId,
@@ -307,6 +331,11 @@ namespace microserviceAuth.Migrations
                 name: "IX_Documents_BlockId",
                 table: "Documents",
                 column: "BlockId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Documents_OwnerId",
+                table: "Documents",
+                column: "OwnerId");
         }
 
         /// <inheritdoc />
@@ -326,6 +355,9 @@ namespace microserviceAuth.Migrations
 
             migrationBuilder.DropTable(
                 name: "AspNetUserTokens");
+
+            migrationBuilder.DropTable(
+                name: "AuditLogs");
 
             migrationBuilder.DropTable(
                 name: "Documents");

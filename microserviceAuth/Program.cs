@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using microserviceAuth.Encrypted;
+using microserviceAuth.Services; // Agregar este using
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +27,9 @@ builder.Services.AddSingleton<AesEncryption>(provider =>
     var configuration = provider.GetRequiredService<IConfiguration>();
     return new AesEncryption(configuration);
 });
+
+// Registrar el servicio de auditoría
+builder.Services.AddScoped<IAuditService, AuditService>();
 
 // Configuración de la cadena de conexión MySQL
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");

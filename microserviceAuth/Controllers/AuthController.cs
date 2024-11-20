@@ -4,6 +4,7 @@
     using Microsoft.AspNetCore.Identity;
     using Microsoft.IdentityModel.Tokens;
     using microserviceAuth.Models;
+    using microserviceAuth.Services; // Importar AuditService
     using System;
     using System.Text;
     using System.IdentityModel.Tokens.Jwt;
@@ -19,11 +20,13 @@
     {
         private readonly UserManager<User> _userManager;
         private readonly IConfiguration _configuration;
+        private readonly IAuditService _auditService; // Inyección de AuditService
 
-        public AuthController(UserManager<User> userManager, IConfiguration configuration)
+        public AuthController(UserManager<User> userManager, IConfiguration configuration, IAuditService auditService)
         {
             _userManager = userManager;
             _configuration = configuration;
+            _auditService = auditService; // Inicialización de AuditService
         }
 
         [HttpPost("register")]
@@ -32,7 +35,7 @@
             // Convertir la fecha de nacimiento de string a DateTime
             if (!DateTime.TryParseExact(dto.DateOfBirth, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateOfBirth))
             {
-                return BadRequest("Invalid date format. Please use dd/MM/yyyy.");
+                return BadRequest("Formato de fecha inválido. Use dd/MM/yyyy.");
             }
 
             var user = new User
@@ -48,10 +51,12 @@
 
             if (!result.Succeeded)
             {
+                await _auditService.LogActionAsync("Intento fallido de registro para el usuario " + dto.Username);
                 return BadRequest(result.Errors);
             }
 
-            return Ok("User registered successfully");
+            await _auditService.LogActionAsync("Usuario registrado exitosamente: " + dto.Username);
+            return Ok("Usuario registrado exitosamente");
         }
 
         [HttpPost("login")]
@@ -60,7 +65,8 @@
             var user = await _userManager.FindByNameAsync(dto.Username);
             if (user == null || !(await _userManager.CheckPasswordAsync(user, dto.Password)))
             {
-                return Unauthorized("Invalid login attempt");
+                await _auditService.LogActionAsync("Intento fallido de inicio de sesión para el usuario " + dto.Username);
+                return Unauthorized("Intento de inicio de sesión inválido");
             }
 
             // Genera un sessionToken único para validar la sesión
@@ -70,7 +76,6 @@
 
             // Genera el accessToken
             var accessToken = GenerateJwtToken(user.Id, user.UserName!, user.SessionToken, "access");
-
 
             // Genera el refreshToken
             var refreshToken = GenerateJwtToken(user.Id, user.UserName!, user.SessionToken, "refresh");
@@ -84,6 +89,7 @@
                 Expires = DateTime.UtcNow.AddDays(7)
             });
 
+            await _auditService.LogActionAsync("Usuario inició sesión exitosamente: " + dto.Username);
             return Ok(new { accessToken });
         }
 
@@ -93,7 +99,7 @@
             var secretKey = _configuration["JwtSettings:SecretKey"];
             if (string.IsNullOrEmpty(secretKey))
             {
-                throw new InvalidOperationException("Secret key for JWT is not configured.");
+                throw new InvalidOperationException("Clave secreta para JWT no está configurada.");
             }
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
